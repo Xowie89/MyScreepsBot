@@ -250,3 +250,32 @@ module.exports = {
         }
     }
 };
+
+// Additional dynamic adjustments for roles
+function calculateDynamicCreepBody(role, energyAvailable) {
+    // Adjust creep bodies based on role and available energy
+    switch (role) {
+        case 'builder':
+        case 'repairer':
+            return [WORK, CARRY, MOVE]; // Base
+        case 'upgrader':
+            return [WORK, WORK, CARRY, MOVE]; // Priority upgrades
+        case 'carrier':
+            return [CARRY, CARRY, MOVE];
+        case 'defender':
+            return [TOUGH, MOVE, ATTACK];
+        default:
+            return [WORK, CARRY, MOVE]; // Fallback body
+    }
+}
+
+// Implement a dynamic creep spawning limit based on CPU usage and resources
+function shouldSpawnCreep(role) {
+    const currentCPU = Game.cpu.getUsed();
+    const maxCreeps = Game.cpu.limit / 2; // Limit based on half the CPU limit
+    return Object.keys(Game.creeps).length < maxCreeps && role !== 'attacker';
+}
+
+// Integration into the spawn logic
+module.exports.calculateDynamicCreepBody = calculateDynamicCreepBody;
+module.exports.shouldSpawnCreep = shouldSpawnCreep;
