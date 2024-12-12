@@ -1,5 +1,5 @@
 module.exports = {
-    manageCreeps: function (roles, desiredRoleCount, determineCreepBody, isUnderAttack) {
+    manageCreeps: function (roles, determineCreepBody, isUnderAttack) {
         let roleCounts = {};
 
         // Initialize role counts
@@ -15,15 +15,9 @@ module.exports = {
             }
         }
 
-        // Adjust spawn logic based on role needs
+        // Adjust spawn logic dynamically based on room conditions
         for (let role of roles) {
-            let desiredCount = desiredRoleCount(role);
-
-            if (role === 'gatherer') {
-                // One gatherer per source
-                let sources = Object.values(Game.rooms).reduce((acc, room) => acc.concat(room.find(FIND_SOURCES)), []);
-                desiredCount = sources.length;
-            }
+            let desiredCount = this.getDynamicRoleCount(role, roleCounts);
 
             if (roleCounts[role] < desiredCount) {
                 let newName = `${role}_${Game.time}`;
@@ -59,6 +53,67 @@ module.exports = {
                     }
                 }
             }
+        }
+    },
+
+    getDynamicRoleCount: function (role, roleCounts) {
+        let constructionSites = Game.rooms.reduce((acc, room) => acc + room.find(FIND_CONSTRUCTION_SITES).length, 0);
+        let energyAvailable = Game.rooms.reduce((acc, room) => acc + room.energyAvailable, 0);
+        let energyCapacityAvailable = Game.rooms.reduce((acc, room) => acc + room.energyCapacityAvailable, 0);
+
+        switch (role) {
+            case 'carrier':
+                // Focus on carriers if energy capacity is significantly unused
+                return energyAvailable / energyCapacityAvailable < 0.5 ? 4 : 2;
+
+            case 'builder':
+                // Increase builders when there are many construction sites
+                return constructionSites > 5 ? 4 : 2;
+
+            case 'repairer':
+                // Ensure at least one repairer if structures are damaged
+                let damagedStructures = Game.rooms.reduce((acc, room) => acc + room.find(FIND_STRUCTURES, {
+                    filter: structure => structure.hits < structure.hitsMax
+                }).length, 0);
+                return damagedStructures > 0 ? 2 : 1;
+
+            case 'upgrader':
+                // Maintain at least two upgraders, but prioritize when no builders are needed
+                return constructionSites === 0 ? 3 : 2;
+
+            case 'gatherer':
+                // One gatherer per source
+                let sources = Game.rooms.reduce((acc, room) => acc + room.find(FIND_SOURCES).length, 0);
+                return sources;
+
+            case 'defender':
+                // Spawn defenders only during attacks
+                return 0;
+
+            case 'attacker':
+                // Spawn attackers only if an attack target is set
+                return Memory.attackTarget ? 1 : 0;
+
+            case 'scout':
+                // Maintain one scout if controller level allows
+                return 1;
+
+            case 'colonizer':
+                // Spawn colonizers if an expansion target exists
+                return Memory.expansionTarget ? 1 : 0;
+
+            case 'remoteMiner':
+                // One remote miner per remote source
+                let remoteSources = Memory.remoteMiningTargets || [];
+                return remoteSources.length;
+
+            case 'remoteCarrier':
+                // Two remote carriers per remote miner
+                let remoteMiners = roleCounts['remoteMiner'] || 0;
+                return remoteMiners * 2;
+
+            default:
+                return 0;
         }
     },
 
