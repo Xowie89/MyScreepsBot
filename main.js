@@ -1,17 +1,15 @@
 // Import all modules
-const memoryManager = require('memoryManager');
-const marketManager = require('marketManager');
-const defenseManager = require('defenseManager');
-const creepManager = require('creepManager');
-const roomManager = require('roomManager');
-const resourceSharing = require('resourceSharing');
-const creepRoles = require('creepRoles');
-const pathfindingManager = require('pathfindingManager');
-const roomProgressionManager = require('roomProgressionManager');
-const emergencyManager = require('emergencyManager');
+const memoryManager = require('./memoryManager');
+const marketManager = require('./marketManager');
+const defenseManager = require('./defenseAndEmergencyManager');
+const creepManager = require('./creepManager');
+const roomManager = require('./roomManager');
+const resourceSharing = require('./resourceSharing');
+const pathfindingManager = require('./pathfindingManager');
 
 module.exports.loop = function () {
     // Step 1: Initialize and Manage Empire Memory
+    memoryManager.clearDeadCreeps();
     memoryManager.initializeEmpireMemory();
     memoryManager.evaluateThreats();
     memoryManager.assignRoomTasks();
@@ -24,11 +22,11 @@ module.exports.loop = function () {
         if (!room.controller || !room.controller.my) continue;
 
         // Check for emergency conditions
-        const isEmergency = emergencyManager.checkEmergency(room);
+        const isEmergency = defenseManager.checkEmergency(room);
 
         if (isEmergency) {
             // Assign emergency roles to creeps in the room
-            emergencyManager.assignEmergencyRoles(room);
+            defenseManager.assignEmergencyRoles(room);
         } else {
             // Perform normal room operations
 
@@ -40,9 +38,6 @@ module.exports.loop = function () {
 
             // Plan room layouts and structures
             roomManager.planRoomLayout(room);
-
-            // Execute room progression plans
-            roomProgressionManager.planRoomProgression(room);
 
             // Manage creeps based on room tasks
             const roomTasks = memoryManager.getRoomTask(roomName);
@@ -63,10 +58,10 @@ module.exports.loop = function () {
 
         if (creep.memory.emergencyRole) {
             // Execute emergency roles during crises
-            emergencyManager.executeEmergencyRole(creep);
+            defenseManager.executeEmergencyRole(creep);
         } else {
             // Perform regular role tasks
-            creepRoles.executeRole(creep);
+            creepManager.executeRole(creep);
         }
     }
 
