@@ -53,3 +53,32 @@ module.exports.loop = function () {
     // Step 5: Assign roles to all creeps
     creepManager.assignRoles();
 };
+
+// Add additional task scheduling logic to optimize CPU usage
+const taskScheduler = {
+    tasks: [],
+    addTask(task) {
+        this.tasks.push(task);
+    },
+    runTasks() {
+        while (this.tasks.length > 0 && Game.cpu.bucket > 500) {
+            const task = this.tasks.shift();
+            task();
+        }
+    }
+};
+
+// Add tasks for long-running processes
+taskScheduler.addTask(() => memoryManager.clearDeadCreeps());
+taskScheduler.addTask(() => resourceSharing.shareResources());
+taskScheduler.addTask(() => {
+    for (let roomName in Game.rooms) {
+        let room = Game.rooms[roomName];
+        if (room.controller && room.controller.my) {
+            roomManager.planRoomLayout(room);
+        }
+    }
+});
+
+// Execute scheduled tasks
+taskScheduler.runTasks();
