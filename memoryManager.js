@@ -1,3 +1,7 @@
+const config = {
+    memoryCleanupInterval: 100, // Interval for memory cleanup
+};
+
 module.exports = {
     clearDeadCreeps: function () {
         if (Game.time % config.memoryCleanupInterval !== 0) return;
@@ -16,7 +20,7 @@ module.exports = {
             }
         }
     },
-    
+
     initializeEmpireMemory: function () {
         if (!Memory.empire) {
             Memory.empire = {
