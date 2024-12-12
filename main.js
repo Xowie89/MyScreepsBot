@@ -1,35 +1,32 @@
+// Import all modules
 const memoryManager = require('memoryManager');
 const marketManager = require('marketManager');
 const defenseManager = require('defenseManager');
 const creepManager = require('creepManager');
 const roomManager = require('roomManager');
 const resourceSharing = require('resourceSharing');
+const creepRoles = require('creepRoles');
+const pathfindingManager = require('pathfindingManager');
 
 module.exports.loop = function () {
-    // Step 1: Clear memory of dead creeps
+    // Step 1: Memory management
     memoryManager.clearDeadCreeps();
 
-    // Step 2: Iterate over all rooms
+    // Step 2: Room management
     for (let roomName in Game.rooms) {
         let room = Game.rooms[roomName];
 
-        // Only process rooms owned by the player
         if (!room.controller || !room.controller.my) continue;
 
-        // Market management
         marketManager.manageMarket(room);
-
-        // Defense management (towers, ramparts, walls)
         defenseManager.manageRoomDefense(room);
-
-        // Room layout planning (extensions, roads, etc.)
         roomManager.planRoomLayout(room);
     }
 
-    // Step 3: Resource sharing across rooms
+    // Step 3: Resource sharing
     resourceSharing.shareResources();
 
-    // Step 4: Manage creeps (spawning, role assignments)
+    // Step 4: Creep management
     const roles = [
         'gatherer',
         'carrier',
@@ -46,39 +43,25 @@ module.exports.loop = function () {
 
     creepManager.manageCreeps(
         roles,
-        creepManager.determineCreepBody, // Ensure this function is implemented in creepManager.js
-        defenseManager.isUnderAttack // Ensure this function is implemented in defenseManager.js
+        creepManager.calculateDynamicCreepBody,
+        defenseManager.isUnderAttack
     );
 
-    // Step 5: Assign roles to all creeps
     creepManager.assignRoles();
-};
 
-// Add additional task scheduling logic to optimize CPU usage
-const taskScheduler = {
-    tasks: [],
-    addTask(task) {
-        this.tasks.push(task);
-    },
-    runTasks() {
-        while (this.tasks.length > 0 && Game.cpu.bucket > 500) {
-            const task = this.tasks.shift();
-            task();
-        }
+    // Step 5: Execute creep roles
+    for (let name in Game.creeps) {
+        const creep = Game.creeps[name];
+        creepRoles.executeRole(creep);
+    }
+
+    // Step 6: Clean outdated paths periodically
+    if (Game.time % 100 === 0) {
+        pathfindingManager.clearOutdatedPaths();
+    }
+
+    // Step 7: Monitor stats
+    if (Game.time % 10 === 0) {
+        console.log(`CPU used: ${Game.cpu.getUsed().toFixed(2)}/${Game.cpu.limit}`);
     }
 };
-
-// Add tasks for long-running processes
-taskScheduler.addTask(() => memoryManager.clearDeadCreeps());
-taskScheduler.addTask(() => resourceSharing.shareResources());
-taskScheduler.addTask(() => {
-    for (let roomName in Game.rooms) {
-        let room = Game.rooms[roomName];
-        if (room.controller && room.controller.my) {
-            roomManager.planRoomLayout(room);
-        }
-    }
-});
-
-// Execute scheduled tasks
-taskScheduler.runTasks();
