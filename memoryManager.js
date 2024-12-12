@@ -1,11 +1,21 @@
 module.exports = {
     clearDeadCreeps: function () {
+        if (Game.time % config.memoryCleanupInterval !== 0) return;
         for (let name in Memory.creeps) {
             if (!Game.creeps[name]) {
                 delete Memory.creeps[name];
             }
         }
-    }
+    },
+
+    clearOldPaths: function () {
+        if (!Memory.paths) return;
+        for (let key in Memory.paths) {
+            if (Memory.paths[key].expiry < Game.time) {
+                delete Memory.paths[key];
+            }
+        }
+    },
     
     initializeEmpireMemory: function () {
         if (!Memory.empire) {
