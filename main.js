@@ -8,6 +8,7 @@ const resourceSharing = require('resourceSharing');
 const creepRoles = require('creepRoles');
 const pathfindingManager = require('pathfindingManager');
 const roomProgressionManager = require('roomProgressionManager');
+const emergencyManager = require('emergencyManager');
 
 module.exports.loop = function () {
     // Step 1: Initialize and Manage Empire Memory
@@ -22,27 +23,35 @@ module.exports.loop = function () {
         // Only process owned rooms
         if (!room.controller || !room.controller.my) continue;
 
-        // Get the room's assigned tasks from Empire Memory
-        const roomTasks = memoryManager.getRoomTask(roomName);
+        // Check for emergency conditions
+        const isEmergency = emergencyManager.checkEmergency(room);
 
-        // Manage market operations
-        marketManager.manageMarket(room);
+        if (isEmergency) {
+            // Assign emergency roles to creeps in the room
+            emergencyManager.assignEmergencyRoles(room);
+        } else {
+            // Perform normal room operations
 
-        // Manage room defenses
-        defenseManager.manageRoomDefense(room);
+            // Manage market operations
+            marketManager.manageMarket(room);
 
-        // Plan room layouts and structures (e.g., extensions, roads, factories)
-        roomManager.planRoomLayout(room);
+            // Manage room defenses
+            defenseManager.manageRoomDefense(room);
 
-        // Execute room progression plans based on controller level
-        roomProgressionManager.planRoomProgression(room);
+            // Plan room layouts and structures
+            roomManager.planRoomLayout(room);
 
-        // Manage creeps based on room tasks
-        creepManager.manageCreeps(
-            Object.keys(roomTasks), // Roles needed for the room
-            creepManager.calculateDynamicCreepBody,
-            defenseManager.isUnderAttack
-        );
+            // Execute room progression plans
+            roomProgressionManager.planRoomProgression(room);
+
+            // Manage creeps based on room tasks
+            const roomTasks = memoryManager.getRoomTask(roomName);
+            creepManager.manageCreeps(
+                Object.keys(roomTasks), // Roles needed for the room
+                creepManager.calculateDynamicCreepBody,
+                defenseManager.isUnderAttack
+            );
+        }
     }
 
     // Step 3: Resource Sharing Across Rooms
@@ -52,12 +61,11 @@ module.exports.loop = function () {
     for (let name in Game.creeps) {
         const creep = Game.creeps[name];
 
-        // Handle specific roles
-        if (creep.memory.role === 'resourceCarrier') {
-            // Handle resource carrier manually
-            resourceSharing.executeCarrierRole(creep);
+        if (creep.memory.emergencyRole) {
+            // Execute emergency roles during crises
+            emergencyManager.executeEmergencyRole(creep);
         } else {
-            // Delegate other roles to the creepRoles module
+            // Perform regular role tasks
             creepRoles.executeRole(creep);
         }
     }
