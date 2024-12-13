@@ -1,7 +1,7 @@
 // main.js
-const roleHarvester = require('role.harvester');
-const roleBuilder = require('role.builder');
-const roleUpgrader = require('role.upgrader');
+const roleHarvester = require('harvester');
+const roleBuilder = require('builder');
+const roleUpgrader = require('upgrader');
 
 module.exports.loop = function () {
     // Clear memory of dead creeps
