@@ -1,4 +1,4 @@
-// role.harvester.js
+// harvester.js
 module.exports = {
     run: function (creep) {
         if (creep.store.getFreeCapacity() > 0) {
